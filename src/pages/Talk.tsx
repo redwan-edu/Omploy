@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Mic, Settings } from "lucide-react";
 import clsx from "clsx";
 import { Navbar } from "../components/layout/Navbar";
-import { VoiceChatInterface } from "../components/chat/VoiceChatInterface";
+import { EnhancedVoiceChatInterface } from "../components/chat/EnhancedVoiceChatInterface";
 import { agentsApi } from "../services/supabaseApi";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -20,6 +20,7 @@ export const Talk: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,6 +53,16 @@ export const Talk: React.FC = () => {
     }
   };
 
+  const handleNewConversation = (conversationId: string) => {
+    setCurrentConversationId(conversationId);
+  };
+
+  const handleAgentChange = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setCurrentConversationId(undefined); // Reset conversation when switching agents
+    navigate(`/talk/${agent.id}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -65,6 +76,7 @@ export const Talk: React.FC = () => {
       <Navbar />
 
       <div className="flex-1 flex max-w-7xl mx-auto overflow-y-auto px-4 pt-28 w-full gap-6">
+        {/* Agent Selection Sidebar */}
         <div className="w-64 rounded-xl p-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar">
           <h2 className="text-xl font-semibold mb-4">Select Agent</h2>
           {agents.length > 0 ? (
@@ -72,7 +84,7 @@ export const Talk: React.FC = () => {
               {agents.map((agent) => (
                 <button
                   key={agent.id}
-                  onClick={() => setSelectedAgent(agent)}
+                  onClick={() => handleAgentChange(agent)}
                   className={clsx(
                     "w-full px-6 py-3 rounded-lg text-left transition-all flex items-center justify-between",
                     selectedAgent?.id === agent.id
@@ -80,19 +92,24 @@ export const Talk: React.FC = () => {
                       : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                   )}
                 >
-                  <span className="text-l font-semibold">{agent.name}</span>
+                  <div className="flex-1">
+                    <span className="text-lg font-semibold block">{agent.name}</span>
+                    <span className="text-sm opacity-75 capitalize">
+                      {agent.type.replace("_", " ")}
+                    </span>
+                  </div>
                   {selectedAgent?.id === agent.id && (
-                    <div className="w-4 h-4 bg-red-600 rounded-full animate-pulse"></div>
+                    <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
                   )}
                 </button>
               ))}
             </div>
           ) : (
-            <div className="text-gray-400">
-              No active agents
+            <div className="text-gray-400 text-center">
+              <p className="mb-4">No active agents found</p>
               <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="mt-4 block bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600"
+                onClick={() => navigate("/dashboard")}
+                className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors"
               >
                 Create Agent
               </button>
@@ -100,14 +117,15 @@ export const Talk: React.FC = () => {
           )}
         </div>
 
-        {/* Main Area: Chat Interface */}
+        {/* Main Chat Area */}
         <div className="flex-1">
           {selectedAgent ? (
             <>
+              {/* Agent Header */}
               <div className="bg-gray-800 rounded-xl p-4 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 ps-2">
                   <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center">
-                    <Mic className="w-5 h-5text-white" />
+                    <Mic className="w-5 h-5 text-white" />
                   </div>
                   <div className="ps-3">
                     <h3 className="text-xl font-semibold">
@@ -116,21 +134,26 @@ export const Talk: React.FC = () => {
                     <p className="text-sm text-gray-400 capitalize">
                       {selectedAgent.type.replace("_", " ")}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedAgent.description}
+                    </p>
                   </div>
                 </div>
                 <button
-                  className="text-gray-400 hover:text-white pe-2"
+                  className="text-gray-400 hover:text-white pe-2 transition-colors"
                   onClick={() => navigate(`/profile/${selectedAgent.id}`)}
+                  title="Edit agent settings"
                 >
                   <Settings className="w-5 h-5" />
                 </button>
               </div>
-              <div className="h-[450px]">
-                <VoiceChatInterface
+
+              {/* Chat Interface */}
+              <div className="h-[500px]">
+                <EnhancedVoiceChatInterface
                   agentId={selectedAgent.id}
-                  onNewConversation={(conversationId) => {
-                    console.log("New conversation started:", conversationId);
-                  }}
+                  conversationId={currentConversationId}
+                  onNewConversation={handleNewConversation}
                 />
               </div>
             </>
@@ -147,7 +170,7 @@ export const Talk: React.FC = () => {
                 Select an agent to start talking
               </h2>
               <p className="text-gray-500">
-                Choose an AI assistant from the left sidebar
+                Choose an AI assistant from the left sidebar to begin your conversation
               </p>
             </div>
           )}
